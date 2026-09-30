@@ -6,7 +6,9 @@ from app.config import settings
 
 engine = create_engine(
     settings.database_url,
-    echo=settings.debug,
+    # SQL parameter logging can expose passwords and private meeting transcripts.
+    echo=False,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(

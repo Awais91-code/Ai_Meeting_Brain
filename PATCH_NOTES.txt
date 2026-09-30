@@ -1,0 +1,163 @@
+AI Meeting Brain - Patch 01
+================================
+
+PURPOSE
+-------
+This is a PATCH-ONLY package. It contains only new/modified files for the requested improvements.
+Copy the CONTENTS of this folder into the root of your existing ai-meeting-brain project and choose:
+    Replace the files in the destination
+Do NOT delete your existing project and do NOT replace backend/data/models.
+
+BACKUP FIRST
+------------
+Make a backup copy of your current project/database before applying the patch.
+
+WHAT THIS PATCH ADDS / IMPROVES
+--------------------------------
+1. Forgot Password
+   - Adds Forgot Password and Reset Password pages.
+   - Uses expiring, one-time password-reset tokens stored as SHA-256 hashes.
+   - Supports SMTP email delivery.
+   - For a trusted local FYP demo only, PASSWORD_RESET_DEV_MODE=true can display the reset URL in the browser when SMTP is not configured.
+
+2. Meeting Access Control
+   - Admin can select individual active employees for a live/saved meeting.
+   - Access is enforced in backend APIs, not only hidden in the UI.
+   - Unauthorized employees cannot join/read meetings.
+
+3. Teams
+   - Admin can create teams such as Development or Marketing.
+   - Active employees can be assigned to teams.
+   - A meeting can be assigned to one or more teams.
+   - Team members automatically receive meeting access/notifications.
+
+4. Jitsi Join Reliability / Mobile Employee Join
+   - Join uses a freshly generated short-lived JWT on every attempt.
+   - Employee mobile browsers prefer a direct full-page Jitsi join instead of relying only on an embedded iframe.
+   - Embedded join has a direct-join fallback when Jitsi does not open.
+   - This targets the case where one employee joined but another employee/supervisor tapped the notification and the Jitsi interface did not open.
+
+5. Employee Live Meeting UI
+   - Raw room/invite URL is not shown as an unnecessary employee-facing link.
+   - Employees use Join meeting, subject to access permission.
+
+6. Dynamic Phone/LAN Address
+   - start.ps1 now refreshes the current Wi-Fi/hotspot IPv4 address automatically.
+   - Phone Setup reads the current generated network config instead of relying on a permanently hard-coded IP.
+   - If DHCP changes the laptop address, Jitsi is marked for recreation/reconfiguration on the next managed start.
+
+7. Automatic Recording + Processing
+   - Admin no longer needs a separate Start Recording button in the normal flow.
+   - Start meeting uses the required browser user gesture to initialize capture.
+   - Browser security can still show the tab/screen audio-share permission chooser; select the Meeting Brain tab and enable Share tab audio.
+   - Ending/leaving the meeting stops the recorder and automatically uploads the recording.
+   - Upload then automatically starts transcription/meeting processing.
+   - Manual upload/retry remains only as a recovery path if automatic upload fails.
+
+8. Higher-Quality Transcription
+   - large-v3 is the preferred Faster-Whisper model.
+   - Existing legacy WHISPER_MODEL=small/base installations automatically prefer large-v3 unless WHISPER_PREFER_LARGE_V3=false is explicitly set.
+   - If large-v3 cannot be downloaded/loaded, an existing cached small/base model can be used as a temporary fallback.
+   - Stronger beam search/VAD configuration is used.
+
+9. Better Urdu / Multilingual Meetings
+   - Adds explicit Urdu, English, Hindi and Mixed/Auto language modes.
+   - Urdu mode prompts the model to keep Urdu in Urdu script.
+   - English technical terms, names, acronyms and code words are preserved in English where possible.
+   - Mixed mode supports switching between Urdu/English/Hindi without translation.
+
+DATABASE MIGRATION
+------------------
+A new Alembic migration is included for teams, team memberships, meeting-team access and password-reset tokens.
+The existing start.ps1 runs:
+    python -m alembic -c backend/alembic.ini upgrade head
+before starting the app, so the migration should apply automatically when you use start.ps1.
+
+AFTER COPYING THE PATCH
+-----------------------
+1. Keep your existing root .env. The patch does NOT overwrite it.
+2. Start normally from the project root:
+       .\start.ps1
+3. If you want to prepare the stronger Whisper model before the first meeting, activate your existing venv and run:
+       .\.venv\Scripts\Activate.ps1
+       python backend\prepare_models.py
+   Internet is needed once if large-v3 is not already cached. The model is several GB, so it is intentionally NOT included in this patch ZIP.
+
+FORGOT PASSWORD CONFIGURATION
+-----------------------------
+For real email delivery, add SMTP settings to the ROOT .env using backend/.env.example as the reference:
+    SMTP_HOST=...
+    SMTP_PORT=587
+    SMTP_USERNAME=...
+    SMTP_PASSWORD=...
+    SMTP_FROM=...
+    SMTP_STARTTLS=true
+    SMTP_USE_SSL=false
+    PASSWORD_RESET_DEV_MODE=false
+
+For a trusted local FYP demonstration without SMTP only:
+    PASSWORD_RESET_DEV_MODE=true
+This can expose a one-time reset URL in the browser, so do not use that setting on a public deployment.
+
+WHISPER NOTES
+-------------
+- You already have base/small under backend/data/models; leave them there.
+- This patch does not include model files.
+- Recommended quality setting is large-v3.
+- On a low-RAM/slow CPU machine you can opt out by setting:
+      WHISPER_PREFER_LARGE_V3=false
+      WHISPER_MODEL=small
+  but Urdu/general accuracy will usually be lower.
+
+PHONE / JITSI NOTES
+-------------------
+- Use start.ps1 for mobile/LAN mode so the current address is auto-detected.
+- Phone and laptop must still be on a network that allows device-to-device communication. Guest Wi-Fi/client isolation can block access.
+- If Android was previously configured with the Meeting Brain development CA, the CA is reused when the IP changes; the server certificate is regenerated for the new IP.
+
+VERIFICATION PERFORMED BEFORE PACKAGING
+---------------------------------------
+- Python source compile check: PASS.
+- Modified JavaScript syntax checks: PASS.
+- Alembic migration chain was previously exercised against SQLite through the new c81e26a40004 migration.
+- Existing broader test suite could not be fully executed in the packaging runtime because that runtime did not contain all project dependencies (for example chromadb/pwdlib); this is an environment limitation, not a reported syntax failure in the patch.
+
+FILES IN THIS PATCH
+-------------------
+- backend/.env.example
+- backend/alembic/versions/c81e26a40004_teams_and_password_reset.py
+- backend/app/config.py
+- backend/app/main.py
+- backend/app/models/__init__.py
+- backend/app/models/meeting_team.py
+- backend/app/models/password_reset_token.py
+- backend/app/models/team.py
+- backend/app/models/team_member.py
+- backend/app/routes/conference.py
+- backend/app/routes/live.py
+- backend/app/routes/meetings.py
+- backend/app/routes/notifications.py
+- backend/app/routes/teams.py
+- backend/app/routes/users.py
+- backend/app/schemas/meeting.py
+- backend/app/schemas/team.py
+- backend/app/schemas/user.py
+- backend/app/services/conference.py
+- backend/app/services/live_sessions.py
+- backend/app/services/notifications.py
+- backend/app/services/password_reset.py
+- backend/app/services/transcription.py
+- backend/app/static/js/app.js
+- backend/app/static/js/capture.js
+- backend/app/static/js/devices.js
+- backend/app/templates/admin.html
+- backend/app/templates/base.html
+- backend/app/templates/capture.html
+- backend/app/templates/devices.html
+- backend/app/templates/employees.html
+- backend/app/templates/forgot_password.html
+- backend/app/templates/login.html
+- backend/app/templates/reset_password.html
+- backend/prepare_models.py
+- backend/setup_network.py
+- start.ps1

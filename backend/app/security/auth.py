@@ -84,6 +84,12 @@ def get_current_user(
             detail="User not found",
         )
 
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account has been disabled.",
+        )
+
     return user
 
 def require_role(required_role: str):

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Connect a phone · Meeting Brain{% endblock %}
+{% block content %}
+<main><section class="page-heading"><div><p class="page-eyebrow">Meet across devices</p><h1 class="page-title">Laptop for you. Phone for your team.</h1><p class="page-subtitle">Use separate cameras and microphones on the same Wi-Fi or hotspot.</p></div></section>
+<section class="panel record-stage"><h2>Connect an Android phone</h2><p id="device-status" class="record-help" role="status">Loading your connection details…</p>
+<div id="device-details" hidden>
+<div class="record-steps"><article class="record-step"><b>01</b><h3>Connect the network</h3><p>Put both devices on the same Wi-Fi, or connect your laptop to the phone’s hotspot.</p></article><article class="record-step"><b>02</b><h3>One-time phone setup</h3><p>Open the setup address below on Android. Install the development CA certificate in Android Settings so Chrome can use HTTPS.</p></article><article class="record-step"><b>03</b><h3>Sign in & join</h3><p>Open the secure app on the phone, sign in as an employee, and tap the live meeting’s Join button.</p></article></div>
+<p class="record-help"><strong>First-time Android setup</strong></p><div class="device-url"><a id="device-setup" target="_blank" rel="noopener"></a><button id="copy-device-setup" class="button-secondary">Copy address</button></div>
+<p class="record-help"><strong>Daily login address (laptop and phone)</strong></p><div class="device-url"><a id="device-app" target="_blank" rel="noopener"></a><button id="copy-device-app" class="button-secondary">Copy address</button></div>
+<p class="record-help">The setup address only serves instructions and a public certificate. Enter passwords only at the <strong>HTTPS</strong> app address. Android certificate menus vary by phone; choose <strong>CA certificate</strong>, not Wi-Fi certificate.</p>
+<details><summary>Verify the certificate before installing</summary><p class="record-help">Compare this SHA-256 fingerprint with the phone setup page. The development CA is generated on your laptop; its private key is never shared.</p><code id="device-fingerprint" class="device-fingerprint"></code></details>
+<p class="record-help">Keep the laptop’s app and Docker Desktop running. Use headphones or put the phone in another room to avoid echo. Record and share tab audio from the laptop; the phone only needs to join.</p>
+<details><summary>Phone cannot connect?</summary><p class="record-help">Keep both devices on the same Wi-Fi/hotspot and avoid guest Wi-Fi with device isolation. The laptop IP is detected automatically whenever <code>start.ps1</code> runs, so after changing networks simply restart Meeting Brain and use the refreshed address shown above. Open the app using Chrome after installing the certificate.</p></details>
+</div></section></main>
+{% endblock %}
+{% block scripts %}<script src="/static/js/devices.js?v=2"></script>{% endblock %}

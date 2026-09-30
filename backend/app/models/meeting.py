@@ -9,6 +9,10 @@ from app.database import Base
 class Meeting(Base):
     __tablename__ = "meetings"
 
+    source_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    meeting_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    recording_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     id: Mapped[int] = mapped_column(
         primary_key=True,
         index=True,
@@ -43,10 +47,27 @@ class Meeting(Base):
         nullable=True,
     )
 
+    # JSON-encoded list of structured action items:
+    # [{"task": ..., "assigned_to": ..., "deadline": ..., "status": ...}]
+    # Stored as Text (not a native JSON column) so this works identically
+    # on SQLite and PostgreSQL without changing the existing DB engine.
+    action_items: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # Why automatic processing failed, shown to the admin so a stuck
+    # "processing_failed" meeting is actionable instead of a dead end.
+    processing_error: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     status: Mapped[str] = mapped_column(
         String(30),
         default="uploaded",
         nullable=False,
+        index=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

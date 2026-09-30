@@ -1,0 +1,1436 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — AI Meeting Brain{% endblock %}
+
+{% block content %}
+
+<div
+    x-data="adminPage()"
+    class="min-h-screen"
+>
+
+    <!-- NAVBAR -->
+    <header class="border-b border-slate-800 bg-slate-950 sticky top-0 z-30">
+
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+
+            <div class="flex items-center gap-3">
+
+                <div class="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+                    <i data-lucide="shield" class="w-5 h-5 text-indigo-400"></i>
+                </div>
+
+                <div>
+                    <h1 class="font-semibold">
+                        Admin Panel
+                    </h1>
+
+                    <p class="text-xs text-slate-500">
+                        AI Meeting Brain
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="flex items-center gap-4">
+                <a href="/live" class="text-sm text-indigo-300">Start live meeting</a>
+
+                <a
+                    href="/admin/employees"
+                    class="text-sm text-slate-400 hover:text-white"
+                >
+                    Employees
+                </a>
+
+                <a
+                    href="/dashboard"
+                    class="text-sm text-slate-400 hover:text-white"
+                >
+                    Dashboard
+                </a>
+
+                <button
+                    @click="logout()"
+                    class="text-sm text-slate-400 hover:text-white"
+                >
+                    Logout
+                </button>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- MAIN -->
+
+    <main class="max-w-7xl mx-auto px-6 py-8">
+
+        <!-- HEADER -->
+
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+
+            <div>
+
+                <p class="text-sm text-indigo-400 font-medium">
+                    Administration
+                </p>
+
+                <h2 class="text-3xl font-bold mt-1">
+                    Meeting Management
+                </h2>
+
+                <p class="text-sm text-slate-500 mt-2">
+                    Create, edit and manage company meetings.
+                </p>
+
+            </div>
+
+
+            <button
+                @click="showCreateModal = true"
+                class="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 font-semibold transition"
+            >
+
+                <i
+                    data-lucide="plus"
+                    class="w-5 h-5"
+                ></i>
+
+                New Meeting
+
+            </button>
+
+        </div>
+
+
+        <!-- STATS -->
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <p class="text-xs text-slate-500">Total</p>
+                <p class="text-2xl font-bold mt-1" x-text="stats.total"></p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <p class="text-xs text-slate-500">Ready</p>
+                <p class="text-2xl font-bold mt-1 text-green-400" x-text="stats.ready"></p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <p class="text-xs text-slate-500">Processing</p>
+                <p class="text-2xl font-bold mt-1 text-yellow-400" x-text="stats.processing"></p>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <p class="text-xs text-slate-500">Failed</p>
+                <p class="text-2xl font-bold mt-1 text-red-400" x-text="stats.processing_failed"></p>
+            </div>
+
+        </div>
+
+
+        <!-- SEARCH & FILTER -->
+
+        <div class="flex flex-col sm:flex-row gap-3 mb-6">
+
+            <div class="relative flex-1">
+                <i data-lucide="search" class="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                <input
+                    type="text"
+                    x-model="searchQuery"
+                    @input.debounce.400ms="loadMeetings()"
+                    placeholder="Search meetings by title or transcript..."
+                    class="w-full pl-9 pr-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+                >
+            </div>
+
+            <select
+                x-model="statusFilter"
+                @change="loadMeetings()"
+                class="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm focus:outline-none focus:border-indigo-500"
+            >
+                <option value="">All statuses</option>
+                <option value="uploaded">Uploaded</option>
+                <option value="processing">Processing</option>
+                <option value="ready">Ready</option>
+                <option value="processing_failed">Processing Failed</option>
+            </select>
+
+            <select
+                x-model="sortOrder"
+                @change="loadMeetings()"
+                class="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-sm focus:outline-none focus:border-indigo-500"
+            >
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="title">Title A-Z</option>
+            </select>
+
+        </div>
+
+
+        <!-- LOADING -->
+
+        <div
+            x-show="loading"
+            class="py-20 text-center"
+        >
+
+            <i
+                data-lucide="loader-2"
+                class="w-8 h-8 animate-spin mx-auto text-indigo-400"
+            ></i>
+
+            <p class="mt-3 text-sm text-slate-500">
+                Loading meetings...
+            </p>
+
+        </div>
+
+
+        <!-- ERROR -->
+
+        <div
+            x-show="!loading && error"
+            class="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400"
+            x-text="error"
+        ></div>
+
+
+        <!-- MEETINGS -->
+
+        <div
+            x-show="!loading"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
+        >
+
+            <template
+                x-for="meeting in meetings"
+                :key="meeting.id"
+            >
+
+                <div
+                    class="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-indigo-500/40 transition"
+                >
+
+                    <div class="flex items-start justify-between gap-3">
+
+                        <div>
+
+                            <h3
+                                class="font-semibold text-lg"
+                                x-text="meeting.title"
+                            ></h3>
+
+                            <p
+                                class="text-xs text-slate-500 mt-2"
+                                x-text="formatDate(meeting.meeting_date)"
+                            ></p>
+
+                        </div>
+
+                            <!-- Uploaded -->
+                            <span
+                                x-show="meeting.status === 'uploaded'"
+                                class="inline-flex items-center gap-1.5
+                                    px-2.5 py-1
+                                    rounded-full
+                                    text-xs font-medium
+                                    bg-slate-800
+                                    text-slate-300"
+                            >
+                                Uploaded
+                            </span>
+
+
+                            <!-- Processing -->
+                            <span
+                                x-show="meeting.status === 'processing'"
+                                class="inline-flex items-center gap-1.5
+                                    px-2.5 py-1
+                                    rounded-full
+                                    text-xs font-medium
+                                    bg-yellow-500/10
+                                    text-yellow-400"
+                            >
+
+                                <svg
+                                    class="w-3.5 h-3.5 animate-spin"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                >
+                                    <circle
+                                        cx="12"
+                                        cy="12"
+                                        r="9"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        opacity="0.3"
+                                    ></circle>
+
+                                    <path
+                                        d="M21 12a9 9 0 0 1-9 9"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                    ></path>
+                                </svg>
+
+                                Processing...
+
+                            </span>
+
+
+                            <!-- Ready -->
+                            <span
+                                x-show="meeting.status === 'ready'"
+                                class="inline-flex items-center gap-1.5
+                                    px-2.5 py-1
+                                    rounded-full
+                                    text-xs font-medium
+                                    bg-green-500/10
+                                    text-green-400"
+                            >
+                                <i
+                                    data-lucide="check-circle"
+                                    class="w-3.5 h-3.5"
+                                ></i>
+
+                                Ready
+                            </span>
+
+
+                            <!-- Processing Failed -->
+                            <span
+                                x-show="meeting.status === 'processing_failed'"
+                                class="inline-flex items-center gap-1.5
+                                    px-2.5 py-1
+                                    rounded-full
+                                    text-xs font-medium
+                                    bg-red-500/10
+                                    text-red-400"
+                            >
+                                <i
+                                    data-lucide="alert-circle"
+                                    class="w-3.5 h-3.5"
+                                ></i>
+
+                                Processing Failed
+                            </span>
+
+
+                    </div>
+
+
+                    <!-- PROCESSING ERROR + REPROCESS -->
+                    <div
+                        x-show="meeting.status === 'processing_failed'"
+                        class="mt-3 p-3 rounded-lg bg-red-500/5 border border-red-500/20"
+                    >
+                        <p
+                            class="text-xs text-red-400/80 mb-2 break-words"
+                            x-text="meeting.processing_error || 'Processing failed for an unknown reason.'"
+                        ></p>
+                        <button
+                            type="button"
+                            @click="reprocessMeeting(meeting)"
+                            :disabled="reprocessingId === meeting.id"
+                            class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition inline-flex items-center gap-1.5"
+                        >
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span x-text="reprocessingId === meeting.id ? 'Reprocessing...' : 'Retry Processing'"></span>
+                        </button>
+                    </div>
+
+                    <!-- STUCK IN PROCESSING TOO LONG -->
+                    <div
+                        x-show="meeting.status === 'processing'"
+                        class="mt-3"
+                    >
+                        <button
+                            type="button"
+                            @click="reprocessMeeting(meeting)"
+                            :disabled="reprocessingId === meeting.id"
+                            class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 transition inline-flex items-center gap-1.5 text-slate-400"
+                        >
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span x-text="reprocessingId === meeting.id ? 'Restarting...' : 'Stuck? Restart processing'"></span>
+                        </button>
+                    </div>
+
+
+                    <div class="mt-5 flex gap-2 flex-wrap">
+
+                        <!-- OPEN -->
+
+                        <a
+                            :href="`/meetings/${meeting.id}`"
+                            class="flex-1 text-center px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm transition"
+                        >
+                            Open
+                        </a>
+
+
+                        <!-- PARTICIPANTS -->
+
+                        <button
+                            type="button"
+                            @click="openParticipantsModal(meeting)"
+                            class="flex-1 px-3 py-2 rounded-lg
+                                bg-slate-800
+                                hover:bg-slate-700
+                                text-sm
+                                transition
+                                inline-flex items-center justify-center gap-1.5"
+                        >
+                            <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                            Participants
+                        </button>
+
+
+                        <!-- EDIT -->
+
+                        <button
+                            type="button"
+                            @click="openEditModal(meeting)"
+                            class="flex-1 px-3 py-2 rounded-lg
+                                bg-indigo-500
+                                hover:bg-indigo-400
+                                text-sm
+                                transition"
+                        >
+                            Edit
+                        </button>
+
+
+                        <!-- DELETE -->
+
+                        <button
+                            type="button"
+                            @click="deletingMeeting = meeting; showDeleteModal = true"
+                            class="px-3 py-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-sm transition"
+                        >
+                            Delete
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </template>
+
+
+            <!-- EMPTY -->
+
+            <div
+                x-show="meetings.length === 0"
+                class="md:col-span-2 xl:col-span-3 py-20 text-center"
+            >
+
+                <i
+                    data-lucide="calendar-x"
+                    class="w-10 h-10 mx-auto text-slate-700"
+                ></i>
+
+                <p class="mt-4 text-slate-500">
+                    No meetings found.
+                </p>
+
+            </div>
+
+        </div>
+
+    </main>
+
+
+    <!-- CREATE MODAL -->
+
+    <div
+        x-show="showCreateModal"
+        x-cloak
+        class="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-4 bg-black/70 overflow-y-auto"
+        @click.self="showCreateModal = false"
+    >
+
+        <div
+            x-show="showCreateModal"
+            x-transition
+            class="w-full max-w-2xl my-3 sm:my-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden"
+        >
+
+            <!-- MODAL HEADER -->
+
+            <div class="px-6 py-5 border-b border-slate-800 flex items-center justify-between">
+
+                <div>
+
+                    <h2 class="font-semibold text-lg">
+                        Create Meeting
+                    </h2>
+
+                    <p class="text-xs text-slate-500 mt-1">
+                        Add a new company meeting.
+                    </p>
+
+                </div>
+
+
+                <button
+                    @click="showCreateModal = false"
+                    class="text-slate-500 hover:text-white"
+                >
+
+                    <i
+                        data-lucide="x"
+                        class="w-5 h-5"
+                    ></i>
+
+                </button>
+
+            </div>
+
+
+            <!-- FORM -->
+
+                <form
+                    @submit.prevent="createMeeting()"
+                    class="p-4 sm:p-6 space-y-5 max-h-[calc(100vh-7rem)] overflow-y-auto"
+                >
+
+                <div>
+
+                    <label class="block text-sm mb-2">
+                        Meeting Title
+                    </label>
+
+                    <input
+                        x-model="newMeeting.title"
+                        type="text"
+                        required
+                        placeholder="Weekly Engineering Meeting"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-indigo-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-sm mb-2">
+                        Meeting Date
+                    </label>
+
+                    <input
+                        x-model="newMeeting.meeting_date"
+                        type="datetime-local"
+                        required
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-indigo-500"
+                    >
+
+                </div>
+
+
+                <div>
+
+                    <label class="block text-sm mb-2">
+                        Duration (minutes)
+                    </label>
+
+                    <input
+                        x-model="newMeeting.duration_minutes"
+                        type="number"
+                        min="1"
+                        placeholder="60"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 outline-none focus:border-indigo-500"
+                    >
+
+                </div>
+
+                <div>
+
+                    <label
+                        class="block text-sm font-medium
+                            text-slate-300 mb-2"
+                    >
+                        Meeting Transcript
+                    </label>
+
+                    <textarea
+                        x-model="newMeeting.transcript" required
+                        rows="10"
+                        placeholder="Paste the meeting transcript here..."
+                        class="w-full px-4 py-3
+                            rounded-xl
+                            bg-slate-950
+                            border border-slate-700
+                            text-sm
+                            leading-6
+                            outline-none
+                            resize-y
+                            focus:border-indigo-500
+                            focus:ring-2
+                            focus:ring-indigo-500/20"
+                    ></textarea>
+
+                    <p class="mt-2 text-xs text-slate-500">
+                        After creating the meeting, the transcript
+                        will automatically be processed into chunks,
+                        embeddings and summary.
+                    </p>
+
+                </div>
+
+
+                <div class="flex justify-end gap-3 pt-2">
+
+                    <button
+                        type="button"
+                        @click="showCreateModal = false"
+                        class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        :disabled="creating"
+                        class="px-5 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 font-semibold"
+                    >
+
+                        <span x-show="!creating">
+                            Create Meeting
+                        </span>
+
+                        <span x-show="creating">
+                            Creating...
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+<!-- ========================================== -->
+<!-- EDIT MEETING MODAL -->
+<!-- ========================================== -->
+
+<div
+    x-show="showEditModal"
+    x-cloak
+
+    class="fixed inset-0 z-50
+           flex items-start sm:items-center
+           justify-center
+           p-3 sm:p-4
+
+           bg-black/70
+           overflow-y-auto"
+
+    @click.self="showEditModal = false"
+>
+
+<div
+        x-show="showEditModal"
+        x-transition
+
+        class="w-full
+               max-w-2xl
+
+               my-3 sm:my-8
+
+               bg-slate-900
+
+               border border-slate-800
+
+               rounded-2xl
+
+               shadow-2xl
+
+               overflow-hidden"
+    >
+
+        <!-- HEADER -->
+
+        <div
+            class="flex items-center justify-between
+                   px-4 sm:px-6
+                   py-4
+
+                   border-b
+                   border-slate-800"
+        >
+
+            <div>
+
+                <h2
+                    class="text-lg
+                           sm:text-xl
+                           font-semibold
+                           text-white"
+                >
+                    Edit Meeting
+                </h2>
+
+                <p
+                    class="mt-1
+                           text-xs
+                           sm:text-sm
+                           text-slate-500"
+                >
+                    Update meeting information
+                </p>
+
+            </div>
+
+
+            <button
+                type="button"
+                @click="showEditModal = false"
+
+                class="p-2
+                       rounded-lg
+
+                       text-slate-400
+                       hover:text-white
+
+                       hover:bg-slate-800
+
+                       transition"
+            >
+
+                <i
+                    data-lucide="x"
+                    class="w-5 h-5"
+                ></i>
+
+            </button>
+
+        </div>
+
+
+        <!-- FORM -->
+
+        <form
+            @submit.prevent="updateMeeting()"
+
+            class="p-4 sm:p-6
+
+                   space-y-5
+
+                   max-h-[calc(100vh-8rem)]
+                   overflow-y-auto"
+        >
+
+            <!-- TITLE -->
+
+            <div>
+
+                <label
+                    class="block
+                           text-sm
+                           font-medium
+                           text-slate-300
+                           mb-2"
+                >
+                    Meeting Title
+                </label>
+
+                <input
+                    type="text"
+
+                    x-model="editMeetingData.title"
+
+                    placeholder="Enter meeting title"
+
+                    class="w-full
+                           px-4
+                           py-3
+
+                           rounded-xl
+
+                           bg-slate-950
+
+                           border
+                           border-slate-700
+
+                           text-white
+
+                           outline-none
+
+                           focus:border-indigo-500
+
+                           focus:ring-2
+                           focus:ring-indigo-500/20"
+                >
+
+            </div>
+
+
+            <!-- DATE -->
+
+            <div>
+
+                <label
+                    class="block
+                           text-sm
+                           font-medium
+                           text-slate-300
+                           mb-2"
+                >
+                    Meeting Date
+                </label>
+
+                <input
+                    type="datetime-local"
+
+                    x-model="editMeetingData.meeting_date"
+
+                    class="w-full
+                           px-4
+                           py-3
+
+                           rounded-xl
+
+                           bg-slate-950
+
+                           border
+                           border-slate-700
+
+                           text-white
+
+                           outline-none
+
+                           focus:border-indigo-500
+
+                           focus:ring-2
+                           focus:ring-indigo-500/20"
+                >
+
+            </div>
+
+
+            <!-- DURATION -->
+
+            <div>
+
+                <label
+                    class="block
+                           text-sm
+                           font-medium
+                           text-slate-300
+                           mb-2"
+                >
+                    Duration (minutes)
+                </label>
+
+                <input
+                    type="number"
+
+                    min="1"
+
+                    x-model="editMeetingData.duration_minutes"
+
+                    placeholder="30"
+
+                    class="w-full
+                           px-4
+                           py-3
+
+                           rounded-xl
+
+                           bg-slate-950
+
+                           border
+                           border-slate-700
+
+                           text-white
+
+                           outline-none
+
+                           focus:border-indigo-500
+
+                           focus:ring-2
+                           focus:ring-indigo-500/20"
+                >
+
+            </div>
+
+
+            <!-- TRANSCRIPT -->
+
+            <div>
+
+                <label
+                    class="block
+                           text-sm
+                           font-medium
+                           text-slate-300
+                           mb-2"
+                >
+                    Meeting Transcript
+                </label>
+
+                <textarea
+                    x-model="editMeetingData.transcript"
+                    rows="10"
+                    placeholder="Paste the meeting transcript here..."
+                    class="w-full
+                           px-4
+                           py-3
+
+                           rounded-xl
+
+                           bg-slate-950
+
+                           border
+                           border-slate-700
+
+                           text-white
+                           text-sm
+                           leading-6
+
+                           outline-none
+                           resize-y
+
+                           focus:border-indigo-500
+
+                           focus:ring-2
+                           focus:ring-indigo-500/20"
+                ></textarea>
+
+                <p class="mt-2 text-xs text-slate-500">
+                    Changing the transcript will re-trigger automatic
+                    processing (chunking, embeddings, and summary).
+                    Leave unchanged to keep the current transcript.
+                </p>
+
+            </div>
+
+
+            <!-- ACTIONS -->
+
+            <div
+                class="flex
+                       flex-col-reverse
+                       sm:flex-row
+
+                       gap-3
+
+                       sm:justify-end
+
+                       pt-2"
+            >
+
+                <button
+                    type="button"
+
+                    @click="showEditModal = false"
+
+                    class="w-full
+                           sm:w-auto
+
+                           px-5
+                           py-3
+
+                           rounded-xl
+
+                           bg-slate-800
+
+                           hover:bg-slate-700
+
+                           text-slate-300
+
+                           text-sm
+                           font-medium
+
+                           transition"
+                >
+                    Cancel
+                </button>
+
+
+                <button
+                    type="submit"
+
+                    class="w-full
+                           sm:w-auto
+
+                           px-5
+                           py-3
+
+                           rounded-xl
+
+                           bg-indigo-500
+
+                           hover:bg-indigo-400
+
+                           text-white
+
+                           text-sm
+                           font-medium
+
+                           transition"
+                >
+                    Save Changes
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<!-- ========================================== -->
+<!-- PARTICIPANT MANAGEMENT MODAL -->
+<!-- ========================================== -->
+
+<div
+    x-show="showParticipantsModal"
+    x-cloak
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+    @click.self="showParticipantsModal = false"
+>
+
+    <div
+        x-show="showParticipantsModal"
+        x-transition
+        class="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-[85vh] flex flex-col"
+    >
+
+        <!-- HEADER -->
+        <div class="px-5 sm:px-6 py-5 border-b border-slate-800 flex items-start justify-between">
+
+            <div class="flex items-center gap-3">
+                <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-500/10">
+                    <i data-lucide="users" class="w-5 h-5 text-indigo-400"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-semibold text-white">Meeting access</h2>
+                    <p
+                        class="text-xs text-slate-500 mt-1"
+                        x-text="participantsMeeting ? participantsMeeting.title : ''"
+                    ></p>
+                </div>
+            </div>
+
+            <button type="button" @click="showParticipantsModal = false" class="text-slate-500 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+
+        </div>
+
+        <!-- CONTENT -->
+        <div class="px-5 sm:px-6 py-5 overflow-y-auto flex-1">
+
+            <p class="text-xs text-slate-500 mb-4">
+                Assign individual employees, whole teams, or both. Only these employees can open this saved meeting.
+            </p>
+
+            <!-- ADD PARTICIPANT -->
+            <div class="mb-5">
+                <p class="text-xs font-semibold text-slate-400 mb-2">INDIVIDUAL EMPLOYEE</p>
+                <div class="flex gap-2">
+
+                <select
+                    x-model="selectedEmployeeId"
+                    class="flex-1 px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                    <option value="">Select an employee to assign...</option>
+                    <template x-for="employee in availableEmployees" :key="employee.id">
+                        <option :value="employee.id" x-text="`${employee.name} (${employee.email})`"></option>
+                    </template>
+                </select>
+
+                <button
+                    type="button"
+                    @click="assignParticipant()"
+                    :disabled="!selectedEmployeeId || participantActionLoading"
+                    class="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-sm font-medium transition"
+                >
+                    Assign
+                </button>
+
+                </div>
+
+            </div>
+
+            <!-- ADD TEAM -->
+            <div class="mb-5">
+                <p class="text-xs font-semibold text-slate-400 mb-2">TEAM ACCESS</p>
+                <div class="flex gap-2">
+                    <select
+                        x-model="selectedTeamId"
+                        class="flex-1 px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-sm focus:outline-none focus:border-indigo-500"
+                    >
+                        <option value="">Select a team to assign...</option>
+                        <template x-for="team in availableTeams" :key="team.id">
+                            <option :value="team.id" x-text="`${team.name} (${team.active_member_count} active)`"></option>
+                        </template>
+                    </select>
+                    <button
+                        type="button"
+                        @click="assignTeam()"
+                        :disabled="!selectedTeamId || participantActionLoading"
+                        class="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-sm font-medium transition"
+                    >
+                        Assign
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- ERROR -->
+            <div
+                x-show="participantsError"
+                x-text="participantsError"
+                class="mb-4 p-3 rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 text-sm"
+            ></div>
+
+            <!-- SUCCESS -->
+            <div
+                x-show="participantsSuccess"
+                x-text="participantsSuccess"
+                class="mb-4 p-3 rounded-lg border border-green-500/20 bg-green-500/10 text-green-400 text-sm"
+            ></div>
+
+            <!-- LOADING -->
+            <div x-show="participantsLoading" class="py-8 text-center">
+                <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto text-indigo-400"></i>
+            </div>
+
+            <template x-if="!participantsLoading">
+                <div>
+
+                    <p class="text-xs text-slate-500 mb-3">
+                        <span x-text="assignedParticipants.length"></span> individual employee(s) ·
+                        <span x-text="assignedTeams.length"></span> team(s)
+                    </p>
+
+                    <div x-show="assignedTeams.length" class="space-y-2 mb-5">
+                        <p class="text-xs font-semibold text-slate-400">ASSIGNED TEAMS</p>
+                        <template x-for="item in assignedTeams" :key="item.id">
+                            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20">
+                                <div>
+                                    <p class="text-sm font-medium" x-text="item.team?.name || 'Unknown team'"></p>
+                                    <p class="text-xs text-slate-500">All current members of this team have access.</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    @click="removeTeam(item.team_id)"
+                                    :disabled="participantActionLoading"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- EMPTY -->
+                    <div x-show="assignedParticipants.length === 0 && assignedTeams.length === 0" class="py-8 text-center text-sm text-slate-500">
+                        No employee or team access assigned to this meeting yet.
+                    </div>
+
+                    <div x-show="assignedParticipants.length" class="space-y-2">
+                        <p class="text-xs font-semibold text-slate-400">INDIVIDUAL EMPLOYEES</p>
+                        <template x-for="participant in assignedParticipants" :key="participant.id">
+                            <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-800/60 border border-slate-800">
+
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-indigo-500/10 flex items-center justify-center text-xs font-semibold text-indigo-400">
+                                        <span x-text="(participant.user?.name || '?').charAt(0).toUpperCase()"></span>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium" x-text="participant.user?.name || 'Unknown'"></p>
+                                        <p class="text-xs text-slate-500" x-text="participant.user?.email || ''"></p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    @click="removeParticipant(participant.user_id)"
+                                    :disabled="participantActionLoading"
+                                    class="text-xs px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition"
+                                >
+                                    Remove
+                                </button>
+
+                            </div>
+                        </template>
+                    </div>
+
+                </div>
+            </template>
+
+        </div>
+
+        <!-- FOOTER -->
+        <div class="flex justify-end px-5 sm:px-6 py-4 border-t border-slate-800">
+            <button
+                type="button"
+                @click="showParticipantsModal = false"
+                class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm font-medium transition"
+            >
+                Close
+            </button>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ========================================== -->
+<!-- DELETE MEETING CONFIRMATION MODAL -->
+<!-- ========================================== -->
+
+<div
+    x-show="showDeleteModal"
+    x-cloak
+
+    class="fixed inset-0 z-50
+           flex items-center justify-center
+           p-4
+
+           bg-black/70
+           backdrop-blur-sm"
+    
+    @click.self="showDeleteModal = false"
+>
+
+    <div
+        x-show="showDeleteModal"
+        x-transition
+
+        class="w-full
+               max-w-md
+
+               bg-slate-900
+
+               border border-slate-800
+
+               rounded-2xl
+
+               shadow-2xl
+
+               overflow-hidden"
+    >
+
+        <!-- HEADER -->
+
+        <div
+            class="px-5 sm:px-6
+                   py-5
+
+                   border-b
+                   border-slate-800"
+        >
+
+            <div
+                class="flex items-center gap-3"
+            >
+
+                <div
+                    class="flex items-center
+                           justify-center
+
+                           w-10 h-10
+
+                           rounded-xl
+
+                           bg-red-500/10"
+                >
+
+                    <i
+                        data-lucide="trash-2"
+                        class="w-5 h-5
+                               text-red-400"
+                    ></i>
+
+                </div>
+
+                <div>
+
+                    <h2
+                        class="text-lg
+                               font-semibold
+                               text-white"
+                    >
+                        Delete Meeting
+                    </h2>
+
+                    <p
+                        class="text-xs
+                               text-slate-500
+                               mt-1"
+                    >
+                        This action cannot be undone.
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- CONTENT -->
+
+        <div
+            class="px-5 sm:px-6
+                   py-5"
+        >
+
+            <p
+                class="text-sm
+                       text-slate-300
+                       leading-6"
+            >
+                Are you sure you want to delete
+                <strong
+                    class="text-white"
+                    x-text="
+                        deletingMeeting
+                            ? deletingMeeting.title
+                            : ''
+                    "
+                ></strong>
+                ?
+            </p>
+
+            <p
+                class="mt-3
+                       text-xs
+                       text-slate-500
+                       leading-5"
+            >
+                The meeting, transcript, chunks,
+                embeddings, summary and related
+                data will be removed.
+            </p>
+
+        </div>
+
+
+        <!-- ACTIONS -->
+
+        <div
+            class="flex
+                   flex-col-reverse
+                   sm:flex-row
+
+                   gap-3
+
+                   px-5 sm:px-6
+                   py-4
+
+                   border-t
+                   border-slate-800"
+        >
+
+            <button
+                type="button"
+
+                @click="
+                    showDeleteModal = false;
+                    deletingMeeting = null;
+                "
+
+                :disabled="deleting"
+
+                class="w-full
+                       sm:flex-1
+
+                       px-4
+                       py-3
+
+                       rounded-xl
+
+                       bg-slate-800
+
+                       hover:bg-slate-700
+
+                       disabled:opacity-50
+
+                       text-slate-300
+
+                       text-sm
+                       font-medium
+
+                       transition"
+            >
+                Cancel
+            </button>
+
+
+            <button
+                type="button"
+
+                @click="deleteMeeting()"
+
+                :disabled="deleting"
+
+                class="w-full
+                       sm:flex-1
+
+                       px-4
+                       py-3
+
+                       rounded-xl
+
+                       bg-red-500
+
+                       hover:bg-red-400
+
+                       disabled:opacity-50
+
+                       text-white
+
+                       text-sm
+                       font-medium
+
+                       transition"
+            >
+
+                <span x-show="!deleting">
+                    Delete Meeting
+                </span>
+
+                <span x-show="deleting">
+                    Deleting...
+                </span>
+
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+    </div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<script
+    src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"
+    defer
+></script>
+
+<script src="/static/js/app.js?v=4"></script>
+
+{% endblock %}

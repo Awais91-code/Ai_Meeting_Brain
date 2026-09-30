@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Recording studio · Meeting Brain{% endblock %}
+{% block content %}
+<main>
+    <section class="page-heading"><div><p class="page-eyebrow">Recording studio</p><h1 class="page-title">Be present. We'll take the notes.</h1><p class="page-subtitle">Capture your conversation and turn it into a searchable meeting.</p></div><a href="/dashboard" class="button-secondary"><i data-lucide="arrow-left"></i>Your meetings</a></section>
+    <section class="record-steps" aria-label="How recording works"><article class="record-step"><b>01</b><h3>Start & announce</h3><p>Your team gets a notification when you join. Employees enter with one click from their dashboard.</p></article><article class="record-step"><b>02</b><h3>Allow audio capture</h3><p>Start meeting once, choose this tab with Share tab audio, and allow your microphone. Recording then starts automatically.</p></article><article class="record-step"><b>03</b><h3>End & process</h3><p>End the meeting normally. Upload, transcription, notes, and chat processing start automatically.</p></article></section>
+    <section class="panel record-stage">
+        <div class="studio-service"><span id="service-status" role="status">Checking meeting service…</span><span class="live-label">EMPLOYEE ACCESS ONLY</span></div>
+        <form id="create-form">
+            <input id="meeting-title" aria-label="Meeting title" required maxlength="255" placeholder="Give your meeting a name…" class="flex-1">
+            <select id="meeting-language" aria-label="Spoken language"><option value="auto">Mixed English / Urdu / Hindi</option><option value="en">English</option><option value="ur">Urdu · اردو</option><option value="hi">Hindi · हिन्दी</option></select>
+            <input id="vocabulary" maxlength="500" aria-label="Names and vocabulary" placeholder="Names or technical terms (optional)">
+            <div id="access-picker" class="w-full rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                    <div><strong class="text-sm">Who can access this meeting?</strong><p class="text-xs text-slate-500 mt-1">Select individual employees, teams, or both. Unselected employees cannot join or open the saved meeting.</p></div>
+                    <span id="access-count" class="text-xs text-slate-500">0 selected</span>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div><p class="text-xs font-semibold text-slate-400 mb-2">TEAMS</p><div id="team-options" class="space-y-2 max-h-40 overflow-y-auto"><p class="text-xs text-slate-500">Loading teams…</p></div></div>
+                    <div><p class="text-xs font-semibold text-slate-400 mb-2">EMPLOYEES</p><div id="employee-options" class="space-y-2 max-h-40 overflow-y-auto"><p class="text-xs text-slate-500">Loading employees…</p></div></div>
+                </div>
+            </div>
+            <button class="button-primary"><i data-lucide="plus"></i>Start meeting</button>
+            <button type="submit" value="upload" class="button-secondary">Upload recording instead</button>
+        </form>
+        <div id="controls" hidden><h2 id="title"></h2><p id="invite-row" class="muted text-xs" hidden>Host invite: <a id="invite" target="_blank" rel="noopener"></a></p><p id="admission-status" class="record-help" role="status"></p><p class="record-help">Transcription: <strong id="language-label"></strong>. For Urdu-heavy meetings, choose Urdu for better language guidance; names and technical terms can be added before the meeting.</p><div class="session-actions"><button id="join" class="button-primary">Join meeting</button><button id="copy-invite" hidden class="button-secondary">Copy invite</button><a id="direct-join" hidden class="button-secondary" target="_blank" rel="noopener">Open meeting directly</a><button id="end-meeting" hidden class="button-secondary">End meeting</button></div><p id="record-timer" class="record-timer" hidden role="status"></p>
+            <div id="record-controls" class="flex flex-wrap gap-3"><button id="start" hidden class="button-primary"><i data-lucide="mic"></i>Retry audio capture</button><button id="stop" disabled class="button-secondary"><i data-lucide="square"></i>End meeting & save</button><button id="retry-process" hidden class="button-secondary">Retry transcription</button><button id="retry" hidden class="button-secondary">Retry upload</button><a id="download" hidden class="button-secondary">Download backup</a><label class="button-secondary cursor-pointer"><i data-lucide="upload"></i>Upload backup recording<input id="audio-file" type="file" accept=".webm,.wav,.mp3,.m4a,.mp4,.ogg" hidden></label></div>
+            <p class="record-help">For hosts, audio capture starts as part of <strong>Start meeting</strong>. When the host ends or leaves the Jitsi room, recording upload and transcript processing start automatically. Keep this page open until the upload finishes.</p><a id="results" hidden>Open transcript & chat →</a>
+        </div>
+        <p class="record-help">Use Chrome or Edge on localhost or HTTPS. Use headphones, enable <strong>Share tab audio</strong>, and tell participants you're recording.</p>
+        <p id="status" class="record-status" role="status" aria-live="polite">Loading your recording studio…</p>
+    </section>
+    <section id="drafts" hidden class="panel record-stage"><h2>Unfinished sessions</h2><div id="draft-list" class="flex flex-wrap gap-3"></div></section>
+    <div id="conference" hidden class="record-conference" style="height:65vh"></div>
+</main>
+{% endblock %}
+{% block scripts %}<script>window.captureMeetingId = {{ meeting_id | tojson }}; window.captureSessionId = {{ session_id | tojson }};</script><script src="/static/js/app.js?v=4"></script><script src="/static/js/capture.js?v=6"></script>{% endblock %}
+
+

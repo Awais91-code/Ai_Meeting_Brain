@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#087f70">
+    <title>{% block title %}AI Meeting Brain{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = {theme:{extend:{fontFamily:{sans:['Inter','Segoe UI','sans-serif']}}}};</script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="/static/css/design.css?v=4">
+    <script src="/static/js/presentation.js?v=3"></script>
+    {% block head %}{% endblock %}
+</head>
+{% set is_login = request.url.path in ['/login', '/forgot-password', '/reset-password'] %}
+<body class="{{ 'login-body' if is_login else 'workspace-body' }}">
+    <a class="skip-link" href="#workspace-main">Skip to content</a>
+    {% if not is_login %}
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Main navigation">
+        <a class="brand" href="/dashboard"><span class="brand-mark"><i data-lucide="audio-lines"></i></span><span>Meeting Brain<small>YOUR TEAM'S MEMORY</small></span></a>
+        <p class="nav-label">WORKSPACE</p>
+        <nav class="sidebar-nav">
+            <a href="/devices" data-admin hidden class="{{ 'active' if request.url.path == '/devices' else '' }}"><i data-lucide="smartphone"></i>Phone setup</a>
+            <a href="/dashboard" class="{{ 'active' if request.url.path == '/dashboard' else '' }}"><i data-lucide="layout-dashboard"></i>Overview</a>
+            <a href="/admin" data-admin hidden class="{{ 'active' if request.url.path == '/admin' or '/edit' in request.url.path else '' }}"><i data-lucide="calendar-days"></i>All meetings</a>
+            <a href="/live" class="{{ 'active' if request.url.path.startswith('/live') or request.url.path.endswith('/live') else '' }}"><i data-lucide="radio"></i>Live sessions</a>
+            <a href="/admin/employees" data-admin hidden class="{{ 'active' if request.url.path == '/admin/employees' else '' }}"><i data-lucide="users"></i>Team members</a>
+        </nav>
+        <div class="sidebar-note"><span class="note-icon"><i data-lucide="sparkles"></i></span><strong>Make every meeting count.</strong><p>Decisions, next steps, and answers. All in one place.</p></div>
+        <div class="sidebar-user"><span class="avatar" data-user-initial>•</span><div><strong data-user-name>Your workspace</strong><small data-user-role>Meeting Brain</small></div><button data-signout aria-label="Sign out" title="Sign out"><i data-lucide="log-out"></i></button></div>
+    </aside>
+    <div class="sidebar-shade" id="sidebar-shade" hidden></div>
+    <div class="workspace-frame">
+        <header class="workspace-topbar">
+            <div class="topbar-left"><button id="menu-toggle" class="icon-button mobile-menu" aria-label="Toggle navigation" aria-expanded="false" aria-controls="app-sidebar"><i data-lucide="menu"></i></button><span class="topbar-breadcrumb">Workspace <span>/</span> <strong>{% if '/live' in request.url.path %}Recording studio{% elif '/employees' in request.url.path %}Team members{% elif '/edit' in request.url.path %}Edit meeting{% elif '/meetings/' in request.url.path %}Meeting details{% elif request.url.path == '/admin' %}All meetings{% else %}Overview{% endif %}</strong></span></div>
+            <div class="topbar-actions"><div class="notification-wrap"><button id="notification-bell" class="icon-button" aria-label="Notifications" aria-expanded="false" aria-controls="notification-panel"><i data-lucide="bell"></i><span id="notification-count" class="notification-count" hidden></span></button><section id="notification-panel" class="notification-panel" aria-label="Your notifications" hidden><header><h2>Team activity</h2><button id="notifications-read-all" class="activity-link">Mark all read</button></header><div id="notification-list" aria-live="polite"></div></section></div><a href="/live" class="button-primary button-small" data-admin hidden><i data-lucide="video"></i>Start meeting</a></div>
+        </header>
+    {% endif %}
+        <div id="workspace-main" class="{{ 'login-content' if is_login else 'workspace-content' }}">
+            {% block content %}{% endblock %}
+        </div>
+    {% if not is_login %}</div>{% endif %}
+    {% block scripts %}{% endblock %}
+    <script src="/static/js/shell.js?v=3"></script>
+    {% if not is_login %}<aside id="activity-toast" class="activity-toast" role="status" hidden></aside><script src="/static/js/activity.js?v=4"></script>{% endif %}
+</body>
+</html>

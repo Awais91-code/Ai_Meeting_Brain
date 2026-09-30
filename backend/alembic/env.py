@@ -42,7 +42,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = settings.database_url
     config.set_main_option(
     "sqlalchemy.url",
     settings.database_url.replace("%", "%%")

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Meeting details · Meeting Brain{% endblock %}
+{% block content %}
+<div x-data="meetingPage()">
+    <main>
+        <div x-show="loading" class="empty-note"><i data-lucide="loader-circle" class="animate-spin"></i>Getting your meeting ready…</div>
+        <div x-show="!loading && error" x-cloak class="notice" role="alert" x-text="error"></div>
+        <div x-show="!loading && !error" x-cloak>
+            <section class="page-heading">
+                <div>
+                    <p class="page-eyebrow">Meeting workspace</p>
+                    <h1 class="page-title" x-text="meeting.title"></h1>
+                    <div class="meeting-meta">
+                        <span><i data-lucide="calendar-days"></i><span x-text="formatDate(meeting.meeting_date)"></span></span>
+                        <span x-show="meeting.duration_minutes"><i data-lucide="clock-3"></i><span x-text="meeting.duration_minutes + ' min'"></span></span>
+                        <span class="status-pill" :data-status="meeting.status" x-text="MeetingUI.statusLabel(meeting.status)"></span>
+                    </div>
+                </div>
+                <div class="page-heading-actions">
+                    <a href="/dashboard" class="button-secondary"><i data-lucide="arrow-left"></i>All meetings</a>
+                    <a href="/live" class="button-secondary" x-show="isAdmin"><i data-lucide="video"></i>New recording</a>
+                </div>
+            </section>
+            <div class="notice" role="status" x-show="meeting.status === 'processing' || meeting.processing_error || actionError">
+                <p x-show="meeting.status === 'processing'">Your recording is being processed. Notes and chat will update here automatically.</p>
+                <p x-text="meeting.processing_error || actionError"></p>
+                <button x-show="isAdmin && meeting.status !== 'processing'" :disabled="processing" @click="retryProcessing()" class="button-secondary button-small">Retry processing</button>
+            </div>
+            <div class="meeting-workspace">
+                <aside class="panel" aria-label="Meeting notes" x-data="{notesTab:'summary'}">
+                    <div class="panel-header"><div><h2 class="panel-title"><i data-lucide="notebook-pen"></i>Meeting notes</h2><p class="panel-hint">The important details, at a glance.</p></div></div>
+                    <div class="summary-tabs" role="tablist" aria-label="Meeting notes">
+                        <button role="tab" id="notes-summary-tab" aria-controls="notes-summary" :aria-selected="notesTab === 'summary'" :class="{selected:notesTab === 'summary'}" @click="notesTab='summary'">Summary</button>
+                        <button role="tab" id="notes-actions-tab" aria-controls="notes-actions" :aria-selected="notesTab === 'actions'" :class="{selected:notesTab === 'actions'}" @click="notesTab='actions'">Action items <span x-text="'(' + (meeting.action_items || []).length + ')'"></span></button>
+                    </div>
+                    <div class="summary-body" id="notes-summary" role="tabpanel" aria-labelledby="notes-summary-tab" x-show="notesTab === 'summary'">
+                        <template x-for="(section,index) in MeetingUI.summarySections(meeting.summary)" :key="index">
+                            <section class="summary-section" :class="{'summary-list':section.title !== 'Overview'}">
+                                <h3 x-text="section.title"></h3>
+                                <template x-for="(item,itemIndex) in section.items" :key="itemIndex"><div class="summary-item rich-text" dir="auto" x-html="MeetingUI.richText(item)"></div></template>
+                            </section>
+                        </template>
+                        <div x-show="!meeting.summary" class="empty-note"><i data-lucide="notebook"></i><p x-text="meeting.status === 'processing' ? 'Your notes are on the way.' : 'Record a meeting or add a transcript to generate notes.'"></p></div>
+                    </div>
+                    <div class="summary-body" id="notes-actions" role="tabpanel" aria-labelledby="notes-actions-tab" x-show="notesTab === 'actions'">
+                        <template x-for="(item,index) in (meeting.action_items || [])" :key="index">
+                            <article class="action-card"><p x-text="MeetingUI.plain(item.task)"></p><div class="action-meta"><span x-text="item.assigned_to"></span><span x-text="item.deadline"></span><span x-text="item.status"></span></div></article>
+                        </template>
+                        <div class="empty-note" x-show="!(meeting.action_items || []).length"><i data-lucide="list-checks"></i>No structured action items were extracted. Check the summary for any responsibilities mentioned.</div>
+                    </div>
+                </aside>
+                <section class="panel chat-panel" aria-label="Meeting assistant">
+                    <div class="panel-header"><div class="assistant-heading"><span class="assistant-mark"><i data-lucide="sparkles"></i></span><div><h2 class="panel-title">Ask your meeting</h2><p class="panel-hint">Clear answers, grounded in the conversation.</p></div></div><span class="panel-kicker">AI assistant</span></div>
+                    <div id="chat-container" class="chat-transcript" role="log" aria-live="polite" aria-label="Conversation" :aria-busy="chatLoading">
+                        <div class="chat-empty" x-show="messages.length === 0 && !chatLoading">
+                            <span class="assistant-mark"><i data-lucide="messages-square"></i></span><h3>Get to the answer.</h3><p>Ask about a decision, deadline, or detail. Your meeting has the context.</p>
+                            <div class="suggestions"><template x-for="prompt in ['What was decided?', 'What are the next steps?', 'What is the budget?']" :key="prompt"><button @click="question=prompt; askQuestion()" :disabled="meeting.status === 'processing'" x-text="prompt"></button></template></div>
+                        </div>
+                        <template x-for="(message,index) in messages" :key="index">
+                            <div class="message-row" :class="{'user-message':message.role === 'user'}">
+                                <span class="assistant-mark" x-show="message.role !== 'user'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16" aria-hidden="true"><path d="m12 3 2.7 6.3L21 12l-6.3 2.7L12 21l-2.7-6.3L3 12l6.3-2.7L12 3Z"/></svg></span>
+                                <div class="message-content">
+                                    <p class="message-label" x-text="message.role === 'user' ? 'You' : 'Meeting Brain'"></p>
+                                    <div class="message-bubble rich-text" dir="auto" x-html="MeetingUI.richText(message.content)"></div>
+                                    <details class="sources" x-show="message.sources && message.sources.length"><summary><span x-text="(message.sources || []).length + ' transcript source' + ((message.sources || []).length === 1 ? '' : 's')"></span></summary><template x-for="source in (message.sources || [])" :key="source.label"><div class="source-excerpt"><strong x-text="source.label"></strong><p dir="auto" x-text="source.content"></p></div></template></details>
+                                </div>
+                            </div>
+                        </template>
+                        <div x-show="chatLoading" class="message-row"><span class="assistant-mark"><i data-lucide="sparkles"></i></span><div><p class="message-label">Finding your answer…</p><div class="typing" aria-hidden="true"><span></span><span></span><span></span></div></div></div>
+                    </div>
+                    <div class="chat-compose"><form @submit.prevent="askQuestion()"><input dir="auto" x-model="question" aria-label="Ask about this meeting" placeholder="Ask a question about this meeting…" maxlength="2000" autocomplete="off" :disabled="chatLoading || meeting.status === 'processing'"><button type="submit" class="send-button" aria-label="Send question" :disabled="chatLoading || !question.trim() || meeting.status === 'processing'"><i data-lucide="arrow-up"></i></button></form><p class="chat-footnote"><i data-lucide="shield-check"></i>Answers use this meeting only. Check sources for context.</p></div>
+                </section>
+            </div>
+            <section class="panel transcript-panel"><button class="transcript-toggle" @click="showTranscript=!showTranscript" :aria-expanded="showTranscript" aria-controls="transcript-content"><span><span class="panel-title"><i data-lucide="file-text"></i>Original transcript</span><span class="panel-hint">Read the full conversation</span></span><span x-text="showTranscript ? '−' : '+'" aria-hidden="true"></span></button><div id="transcript-content" class="transcript-text" dir="auto" x-show="showTranscript" x-text="meeting.transcript || 'No transcript yet.'"></div></section>
+        </div>
+    </main>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/app.js?v=3"></script><script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>{% endblock %}

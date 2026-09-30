@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Welcome back · Meeting Brain{% endblock %}
+{% block content %}
+<div class="login-layout" x-data="loginPage()">
+    <section class="login-story"><a class="brand" href="/login"><span class="brand-mark"><i data-lucide="audio-lines"></i></span><span>Meeting Brain<small>YOUR TEAM'S MEMORY</small></span></a>
+        <h1>Good conversations.<br><em>Clear next steps.</em></h1><p>Turn your team's meetings into notes you can use and answers you can trust.</p>
+        <div class="story-preview" aria-hidden="true"><span class="preview-label">From conversation to clarity</span><div class="preview-wave">{% for height in [9,16,24,13,30,22,35,17,27,32,14,24,18,30,12,21,33,17,26,14,31,22,11,19,28,14,23,10] %}<i style="--h:{{ height }}px"></i>{% endfor %}</div><p>Capture the discussion.<br>Keep the decisions. Find the answers.</p></div>
+        <div class="story-footer">A little less note-taking. A lot more clarity.</div>
+    </section>
+    <section class="login-form-side"><div class="login-form-card"><p class="page-eyebrow">Your workspace awaits</p><h2>Welcome back.</h2><p>Sign in to pick up where your team left off.</p>
+        <div x-show="error" x-cloak class="login-error" role="alert" x-text="error"></div>
+        <form @submit.prevent="login"><div class="login-field"><label for="login-email">Work email</label><input id="login-email" x-model="email" type="email" autocomplete="email" placeholder="you@company.com" required></div><div class="login-field"><label for="login-password">Password</label><input id="login-password" x-model="password" type="password" autocomplete="current-password" placeholder="Enter your password" required></div><div class="text-right -mt-2 mb-3"><a href="/forgot-password" class="text-sm text-indigo-300 hover:text-indigo-200">Forgot password?</a></div><button type="submit" class="button-primary" :disabled="loading"><span x-text="loading ? 'Signing in…' : 'Sign in to your workspace'"></span><i data-lucide="arrow-right"></i></button></form>
+        <div class="login-caption">Need an account? Contact your workspace administrator.</div>
+    </div></section>
+</div>
+{% endblock %}
+{% block scripts %}<script src="/static/js/app.js?v=4"></script><script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>{% endblock %}

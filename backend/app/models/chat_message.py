@@ -8,6 +8,7 @@ from app.database import Base
 
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
+    sources_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     id: Mapped[int] = mapped_column(
         Integer,
